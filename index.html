@@ -29,6 +29,7 @@
       <div class="canvas-wrap">
         <canvas id="gameCanvas" width="960" height="540" aria-label="Platform game"></canvas>
         <div id="tutorialCard" class="tutorial-card hidden"><strong id="tutorialTitle"></strong><span id="tutorialText"></span><button id="skipTutorial">Skip tutorial</button></div>
+        <div class="controls-hint">← → or A/D: Move • Space: Jump • Esc: Pause</div>
         <div id="toast" class="toast"></div>
       </div>
       <nav class="touch-controls" aria-label="Touch controls">
@@ -41,6 +42,7 @@
       <p class="lede small">The bot learns left, right, or wait with tabular Q-learning. Gameplay never trains in the background.</p>
       <div class="training-grid"><div class="metric"><b id="rounds">0</b><span>rounds</span></div><div class="metric"><b id="catchRate">0%</b><span>catch rate</span></div><div class="metric"><b id="deathRate">0%</b><span>death rate</span></div><div class="metric"><b id="stuckRate">0%</b><span>stuck rate</span></div></div>
       <p id="trainingStatus" class="status">Ready. The bundled model is a safe starter policy.</p>
+      <p class="model-info">Loaded model: <b id="modelVersion">checking…</b> · Evaluation: <b id="modelEvaluation">checking…</b></p>
       <div class="menu-buttons"><button id="startTraining" class="primary">Start</button><button id="stopTraining">Stop</button><button id="saveTraining">Save latest checkpoint</button><button id="resetTraining" class="quiet">Reset Training</button><button id="backMenu">Back to menu</button></div>
       <p class="fine-print">New checkpoints are evaluated on fixed scenarios before becoming the gameplay model. A higher round count is not automatically a better score.</p>
     </section>
