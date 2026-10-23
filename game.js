@@ -15,6 +15,7 @@ let levelIndex=1,level,player,bots,keys={},last=0,acc=0,paused=false,completed=f
 let progress=load("progress",{completed:[],highest:1,tutorial:false}),tutorialStep=0;
 const rect=(x,y,w,h)=>({x,y,w,h});
 const overlap=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+const terrainState=x=>`${Math.floor(Math.max(0,Math.min(959,x))/160)}:${x+30>450&&x<535?1:0}`;
 
 function startGame(index=levelIndex,tutorial=false){
   levelIndex=index;level=LEVELS[index];tutorialStep=0;
@@ -42,8 +43,9 @@ function playerJump(){
   }
 }
 function botAction(bot){
-  const relative=player.x-bot.x,state=`${Math.sign(relative)}:${Math.sign(player.vx)}:${bot.ground?1:0}:${Math.sign(bot.vy)}`;
-  const values=model?.q?.[state];let action;
+  const relative=player.x-bot.x,state=`${Math.sign(relative)}:${Math.sign(player.vx)}:${bot.ground?1:0}:${Math.sign(bot.vy)}:${terrainState(bot.x)}`;
+  const legacyState=`${Math.sign(relative)}:${Math.sign(player.vx)}:${bot.ground?1:0}:${Math.sign(bot.vy)}`;
+  const values=model?.q?.[state]||model?.q?.[legacyState];let action;
   if(values&&typeof values==="object")action=Number(Object.entries(values).sort((a,b)=>b[1]-a[1])[0]?.[0]||0);
   else action=relative>12?1:relative<-12?-1:0;
   return Math.max(-1,Math.min(1,action));
