@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jump = Trouble</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main id="app">
+    <section id="menu" class="screen">
+      <p class="eyebrow">A tiny platforming experiment</p>
+      <h1>Jump <span>=</span> Trouble</h1>
+      <p class="lede">Every jump you make is trouble for the bots.</p>
+      <div class="menu-buttons">
+        <button id="playButton" class="primary">Play / Continue</button>
+        <button id="tutorialButton">Tutorial</button>
+        <button id="trainingButton">Training Lab</button>
+        <button id="resetProgressButton" class="quiet">Reset Progress</button>
+      </div>
+      <p id="menuStatus" class="status"></p>
+    </section>
+
+    <section id="game" class="hidden">
+      <header class="hud">
+        <div><strong>JUMP = TROUBLE</strong><span id="levelLabel"></span></div>
+        <div class="hud-right"><span id="keyLabel">🔒 Find the key!</span><button id="pauseButton">Pause</button></div>
+      </header>
+      <div class="canvas-wrap">
+        <canvas id="gameCanvas" width="960" height="540" aria-label="Platform game"></canvas>
+        <div id="tutorialCard" class="tutorial-card hidden"><strong id="tutorialTitle"></strong><span id="tutorialText"></span><button id="skipTutorial">Skip tutorial</button></div>
+        <div id="toast" class="toast"></div>
+      </div>
+      <nav class="touch-controls" aria-label="Touch controls">
+        <button data-key="left">←</button><button data-key="right">→</button><button data-key="jump">↑</button>
+      </nav>
+    </section>
+
+    <section id="training" class="screen hidden">
+      <p class="eyebrow">Offline reinforcement learning</p><h2>Training Lab</h2>
+      <p class="lede small">The bot learns left, right, or wait with tabular Q-learning. Gameplay never trains in the background.</p>
+      <div class="training-grid"><div class="metric"><b id="rounds">0</b><span>rounds</span></div><div class="metric"><b id="catchRate">0%</b><span>catch rate</span></div><div class="metric"><b id="deathRate">0%</b><span>death rate</span></div><div class="metric"><b id="stuckRate">0%</b><span>stuck rate</span></div></div>
+      <p id="trainingStatus" class="status">Ready. The bundled model is a safe starter policy.</p>
+      <div class="menu-buttons"><button id="startTraining" class="primary">Start</button><button id="stopTraining">Stop</button><button id="saveTraining">Save latest checkpoint</button><button id="resetTraining" class="quiet">Reset Training</button><button id="backMenu">Back to menu</button></div>
+      <p class="fine-print">New checkpoints are evaluated on fixed scenarios before becoming the gameplay model. A higher round count is not automatically a better score.</p>
+    </section>
+
+    <div id="pauseModal" class="modal hidden"><div class="modal-card"><h2>Paused</h2><button id="resumeButton" class="primary">Resume</button><button id="restartButton">Restart level</button><button id="pauseMenuButton">Back to menu</button></div></div>
+    <div id="completeModal" class="modal hidden"><div class="modal-card"><h2 id="completeTitle">Level complete!</h2><p id="completeText"></p><button id="nextButton" class="primary">Next level</button><button id="replayButton">Replay</button><button id="completeMenuButton">Main menu</button></div></div>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
