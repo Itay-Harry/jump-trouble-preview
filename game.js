@@ -7,7 +7,7 @@ const LEVELS=[
  {name:"3",start:[55,430],key:[805,240],exit:[900,410],platforms:[[0,480,960,60],[150,400,140,20],[330,330,150,20],[550,260,150,20],[730,380,180,20]],spikes:[[290,460,65,20],[470,460,65,20],[690,460,45,20]],bots:[[220,360],[400,290],[780,340]]}
 ];
 const $=s=>document.querySelector(s),load=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))||f}catch{return f}},save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-const previewMode=new URLSearchParams(location.search).has("preview");
+const previewMode=new URLSearchParams(location.search).has("preview")||location.hostname.endsWith(".github.io");
 let levelIndex=1,level,player,bots,keys={},pressed={},last=0,acc=0,paused=false,completed=false,model=null,progress=load("progress",{completed:[],highest:1,tutorial:false}),training=load("training",{rounds:0,catches:0,deaths:0,stuck:0,latest:null,best:null});
 function rect(x,y,w,h){return{x,y,w,h}}function overlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function startGame(i=levelIndex,tutorial=false){levelIndex=i;level=LEVELS[i];player={x:level.start[0],y:level.start[1],w:28,h:40,vx:0,vy:0,ground:false,coyote:0,jumpBuffer:0};bots=level.bots.map((p,n)=>({x:p[0],y:p[1],w:30,h:38,vx:0,vy:0,ground:false,coyote:0,brain:{lastX:p[0],stuck:0},id:n}));completed=false;paused=false;$(`#menu`).classList.add("hidden");$("#training").classList.add("hidden");$("#game").classList.remove("hidden");$("#pauseModal").classList.add("hidden");$("#completeModal").classList.add("hidden");$("#levelLabel").textContent=`  •  Level ${i}`;$("#keyLabel").textContent="🔒 Find the key!";$("#tutorialCard").classList.toggle("hidden",!tutorial);if(tutorial) tutorialStep=0;last=performance.now();requestAnimationFrame(loop)}
