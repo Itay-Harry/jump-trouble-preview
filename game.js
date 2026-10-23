@@ -3,7 +3,7 @@ const canvas=document.querySelector("#gameCanvas"),ctx=canvas.getContext("2d"),W
 const GRAVITY=1800,SPEED=250,JUMP=-650,STEP=1/60;
 const LEVELS=[
   {name:"Tutorial",start:[55,430],marker:[175,440],star:[335,375],key:[820,420],exit:[900,410],platforms:[[0,480,960,60],[300,420,170,20],[570,360,170,20]],spikes:[[470,460,70,20]],bots:[[700,320]]},
-  {name:"1",start:[55,430],star:[335,350],key:[820,420],exit:[900,410],platforms:[[0,480,960,60],[220,400,220,20],[610,420,220,20]],spikes:[[450,460,85,20]],bots:[[690,370]]},
+  {name:"1",start:[55,430],star:[600,190],key:[820,420],exit:[900,410],platforms:[[0,480,960,60],[150,390,150,20],[330,310,170,20],[530,230,170,20],[730,300,150,20],[610,420,220,20]],spikes:[[450,460,85,20]],bots:[[690,370]]},
   {name:"2",start:[55,430],star:[490,270],key:[770,250],exit:[900,410],platforms:[[0,480,960,60],[160,390,180,20],[420,320,190,20],[700,340,190,20]],spikes:[[350,460,60,20],[610,460,70,20]],bots:[[220,350],[760,300]]},
   {name:"3",start:[45,430],star:[590,220],key:[790,195],exit:[900,410],platforms:[[0,480,960,60],[130,400,150,20],[330,335,145,20],[535,270,150,20],[735,350,185,20]],spikes:[[280,460,60,20],[475,460,60,20],[685,460,45,20]],bots:[[200,360],[390,295],[790,310]]}
 ];
@@ -27,7 +27,7 @@ function startGame(index=levelIndex,tutorial=false){
   $("#menu").classList.add("hidden");$("#training").classList.add("hidden");$("#game").classList.remove("hidden");
   $("#pauseModal").classList.add("hidden");$("#completeModal").classList.add("hidden");
   $("#levelLabel").textContent=`  •  ${level.name==="Tutorial"?"Tutorial":"Level "+index}`;
-  $("#keyLabel").textContent="🔒 Find the key!";$("#starLabel").textContent=`${progress.stars?.includes(levelIndex)?"★":"☆"} 0/1`;$("#tutorialCard").classList.toggle("hidden",!tutorial);
+  const earned=progress.stars?.includes(levelIndex);$("#keyLabel").textContent="🔒 Find the key!";$("#starLabel").textContent=`${earned?"★":"☆"} ${earned?1:0}/1`;$("#tutorialCard").classList.toggle("hidden",!tutorial);
   last=performance.now();requestAnimationFrame(loop);
 }
 function reset(){startGame(levelIndex,levelIndex===0)}
@@ -109,6 +109,7 @@ function draw(){
   const palettes=[["#dff5ff","#b9e7e1","#82c78b"],["#bdeeff","#d9f2d3","#8ecf83"],["#e8e0ff","#c8d6f2","#83a9d6"],["#ffe6cf","#f6d3b2","#b8c77b"]],palette=palettes[levelIndex];ctx.clearRect(0,0,W,H);ctx.fillStyle=palette[0];ctx.fillRect(0,0,W,H);
   ctx.fillStyle=palette[1];ctx.beginPath();ctx.moveTo(0,390);for(let x=0;x<=W;x+=120)ctx.quadraticCurveTo(x+60,330+(x%180),x+120,390);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();ctx.fillStyle=palette[2];ctx.beginPath();ctx.moveTo(0,430);for(let x=0;x<=W;x+=150)ctx.quadraticCurveTo(x+75,375+(x%150),x+150,430);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
   ctx.fillStyle="#fff9";for(const cloud of [[110,90],[530,110],[770,65]]){ctx.beginPath();ctx.arc(cloud[0],cloud[1],22,0,7);ctx.arc(cloud[0]+25,cloud[1]+5,17,0,7);ctx.arc(cloud[0]-25,cloud[1]+7,15,0,7);ctx.fill()}
+  if(levelIndex===1){ctx.fillStyle="#294f62aa";ctx.font="bold 12px 'Comic Sans MS',sans-serif";ctx.fillText("LONG ROUTE",170,365);ctx.fillText("SHORTCUT + BOT",430,448)}
   for(const p of level.platforms)drawPlatform(...p);
   for(const spike of level.spikes){ctx.fillStyle="#e84d50";for(let x=spike[0];x<spike[0]+spike[2];x+=14){ctx.beginPath();ctx.moveTo(x,spike[1]+20);ctx.lineTo(x+7,spike[1]);ctx.lineTo(x+14,spike[1]+20);ctx.fill()}}
   if(levelIndex===0&&!progress.tutorial){const x=level.marker[0];ctx.strokeStyle="#ffe169";ctx.lineWidth=4;ctx.strokeRect(x,458,52,22);ctx.fillStyle="#ffe169";ctx.beginPath();ctx.moveTo(x+26,425+Math.sin(performance.now()/220)*6);ctx.lineTo(x+14,440+Math.sin(performance.now()/220)*6);ctx.lineTo(x+38,440+Math.sin(performance.now()/220)*6);ctx.fill()}
