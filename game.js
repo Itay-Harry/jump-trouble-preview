@@ -11,7 +11,8 @@ const $=s=>document.querySelector(s);
 const load=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))||f}catch{return f}};
 const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 const previewMode=new URLSearchParams(location.search).has("preview")||location.hostname.endsWith(".github.io");
-let levelIndex=1,level,player,bots,keys={},last=0,acc=0,paused=false,completed=false,model=null;
+const reducedMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+let levelIndex=1,level,player,bots,keys={},last=0,acc=0,paused=false,completed=false,model=null,effects=[];
 let progress=load("progress",{completed:[],highest:1,tutorial:false}),tutorialStep=0;
 const rect=(x,y,w,h)=>({x,y,w,h});
 const overlap=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
@@ -19,8 +20,9 @@ const terrainState=x=>`${Math.floor(Math.max(0,Math.min(959,x))/160)}:${x+30>450
 
 function startGame(index=levelIndex,tutorial=false){
   levelIndex=index;level=LEVELS[index];tutorialStep=0;
-  player={x:level.start[0],y:level.start[1],w:28,h:40,vx:0,vy:0,ground:false,coyote:0,jumpBuffer:0,hasKey:false};
-  bots=level.bots.map((p,n)=>({x:p[0],y:p[1],w:30,h:38,vx:0,vy:0,ground:false,coyote:0,id:n}));
+  player={x:level.start[0],y:level.start[1],w:28,h:40,vx:0,vy:0,ground:false,coyote:0,jumpBuffer:0,hasKey:false,isPlayer:true,scaleX:1,scaleY:1};
+  bots=level.bots.map((p,n)=>({x:p[0],y:p[1],w:30,h:38,vx:0,vy:0,ground:false,coyote:0,id:n,defeated:false}));
+  effects=[];
   completed=false;paused=false;
   $("#menu").classList.add("hidden");$("#training").classList.add("hidden");$("#game").classList.remove("hidden");
   $("#pauseModal").classList.add("hidden");$("#completeModal").classList.add("hidden");
@@ -31,14 +33,17 @@ function startGame(index=levelIndex,tutorial=false){
 function reset(){startGame(levelIndex,levelIndex===0)}
 function showMenu(){paused=true;$("#game").classList.add("hidden");$("#training").classList.add("hidden");$("#menu").classList.remove("hidden");$("#menuStatus").textContent=`Highest level unlocked: ${Math.min(3,progress.highest)}`;$("#pauseModal").classList.add("hidden")}
 function moveBody(o,dt){
+  const wasGround=o.ground;
   o.vy+=GRAVITY*dt;o.x+=o.vx*dt;
   o.y+=o.vy*dt;o.ground=false;
   for(const p of level.platforms)if(o.x<p[0]+p[2]&&o.x+o.w>p[0]&&o.y+o.h>=p[1]-8&&o.y+o.h<=p[1]+10&&o.vy>=0){o.y=p[1]-o.h;o.vy=0;o.ground=true}
   o.x=Math.max(0,Math.min(W-o.w,o.x));o.coyote=o.ground?.1:Math.max(0,o.coyote-dt);
+  if(o.isPlayer&&!wasGround&&o.ground){o.scaleX=1.14;o.scaleY=.86;spawnDust(o.x+o.w/2,o.y+o.h)}
 }
 function playerJump(){
   if(player.jumpBuffer>0&&(player.ground||player.coyote>0)){
     player.vy=JUMP;player.ground=false;player.coyote=0;player.jumpBuffer=0;
+    player.scaleX=.88;player.scaleY=1.14;spawnDust(player.x+player.w/2,player.y+player.h);
     for(const bot of bots)if(bot.ground){bot.vy=JUMP;bot.ground=false}
   }
 }
@@ -71,24 +76,32 @@ function update(dt){
   player.jumpBuffer=Math.max(0,player.jumpBuffer-dt);
   const direction=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0);
   player.vx+=(direction*SPEED-player.vx)*Math.min(1,dt*14);moveBody(player,dt);playerJump();
-  for(const bot of bots){bot.vx=botAction(bot)*150;moveBody(bot,dt);if(overlap(bot,player)){toast("Caught! Retry with a well-timed jump.");reset();return}}
+  for(const bot of bots){if(bot.defeated)continue;bot.vx=botAction(bot)*150;moveBody(bot,dt);if((bot.x+bot.w>450&&bot.x<535&&bot.y+bot.h>=480)||bot.y>H+40){bot.defeated=true;spawnDefeat(bot);continue}if(overlap(bot,player)){toast("Caught! Retry with a well-timed jump.");reset();return}}
   if(player.y>H+80||level.spikes.some(spike=>overlap(player,rect(spike[0],spike[1],spike[2],spike[3])))){toast("Ouch! Try again.");reset();return}
   if(levelIndex===0&&!progress.tutorial)updateTutorial();
-  if(overlap(player,rect(level.key[0],level.key[1],30,30))){player.hasKey=true;$("#keyLabel").textContent="🔑 Key collected!"}
+  if(!player.hasKey&&overlap(player,rect(level.key[0],level.key[1],30,30))){player.hasKey=true;collectSparkle(level.key[0]+15,level.key[1]+15);$("#keyLabel").textContent="🔑 Key collected!"}
   if(player.hasKey&&overlap(player,rect(level.exit[0],level.exit[1],42,72))){completed=true;progress.completed[levelIndex]=true;progress.highest=Math.max(progress.highest,Math.min(3,levelIndex+1));if(levelIndex===0)progress.tutorial=true;save("progress",progress);$("#completeTitle").textContent=levelIndex===3?"You escaped!":"Level complete!";$("#completeText").textContent=levelIndex===3?"You outsmarted every bot.":"Nice jump timing. The next layout adds trouble.";$("#nextButton").classList.toggle("hidden",levelIndex===3);$("#completeModal").classList.remove("hidden")}
 }
-function drawKey(x,y){ctx.save();ctx.translate(x+15,y+15);ctx.rotate(-.35);ctx.strokeStyle="#ffe169";ctx.lineWidth=7;ctx.beginPath();ctx.arc(-5,0,8,0,Math.PI*2);ctx.moveTo(3,0);ctx.lineTo(16,0);ctx.moveTo(11,0);ctx.lineTo(11,7);ctx.moveTo(16,0);ctx.lineTo(16,5);ctx.stroke();ctx.restore()}
+function spawnDust(x,y){if(reducedMotion)return;for(let i=0;i<4;i++)effects.push({type:"dust",x:x+(Math.random()-.5)*18,y,vx:(Math.random()-.5)*35,vy:-25-Math.random()*25,life:.35,max:.35})}
+function spawnDefeat(bot){effects.push({type:"defeat",x:bot.x+bot.w/2,y:bot.y+bot.h/2,life:.55,max:.55});if(!reducedMotion)for(let i=0;i<5;i++)effects.push({type:"spark",x:bot.x+bot.w/2,y:bot.y+bot.h/2,vx:(Math.random()-.5)*110,vy:(Math.random()-.5)*110,life:.45,max:.45})}
+function collectSparkle(x,y){if(reducedMotion)return;for(let i=0;i<8;i++)effects.push({type:"spark",x,y,vx:Math.cos(i)*55,vy:Math.sin(i)*55,life:.5,max:.5})}
+function updateEffects(dt){for(const effect of effects){effect.life-=dt;effect.x+=(effect.vx||0)*dt;effect.y+=(effect.vy||0)*dt;effect.vy=(effect.vy||0)+80*dt}effects=effects.filter(effect=>effect.life>0);if(player){player.scaleX+=(1-player.scaleX)*Math.min(1,dt*10);player.scaleY+=(1-player.scaleY)*Math.min(1,dt*10)}}
+function drawKey(x,y){ctx.save();ctx.translate(x+15,y+15);ctx.rotate(-.35);ctx.strokeStyle="#f2b927";ctx.lineWidth=7;ctx.beginPath();ctx.arc(-5,0,8,0,Math.PI*2);ctx.moveTo(3,0);ctx.lineTo(16,0);ctx.moveTo(11,0);ctx.lineTo(11,7);ctx.moveTo(16,0);ctx.lineTo(16,5);ctx.stroke();ctx.strokeStyle="#fff4a3";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(17,-11);ctx.lineTo(17,-3);ctx.moveTo(13,-7);ctx.lineTo(21,-7);ctx.stroke();ctx.restore()}
+function roundedPath(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r)}
+function drawPlatform(x,y,w,h){ctx.fillStyle="#8b5b3e";roundedPath(x,y,w,h,8);ctx.fill();ctx.fillStyle="#70ad59";roundedPath(x,y-4,w,10,6);ctx.fill();ctx.strokeStyle="#4e8748";ctx.lineWidth=2;ctx.beginPath();for(let i=x+12;i<x+w-5;i+=24){ctx.moveTo(i,y+14);ctx.lineTo(i+5,y+18);ctx.moveTo(i+9,y+8);ctx.lineTo(i+13,y+11)}ctx.stroke()}
+function drawPlayer(){const cx=player.x+player.w/2,cy=player.y+player.h/2;ctx.save();ctx.translate(cx,cy);ctx.scale(player.scaleX,player.scaleY);ctx.fillStyle="#247dcc";roundedPath(-14,-20,28,40,9);ctx.fill();ctx.strokeStyle="#14558e";ctx.lineWidth=2;ctx.stroke();ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(-6,-6,4,0,7);ctx.arc(6,-6,4,0,7);ctx.fill();ctx.fillStyle="#18324a";ctx.beginPath();ctx.arc(-5,-6,1.7,0,7);ctx.arc(7,-6,1.7,0,7);ctx.fill();ctx.strokeStyle="#18324a";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-11,-13);ctx.lineTo(-3,-15);ctx.moveTo(3,-15);ctx.lineTo(11,-13);ctx.stroke();ctx.beginPath();ctx.arc(0,2,6,0,Math.PI);ctx.stroke();ctx.strokeStyle="#14558e";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-8,20);ctx.lineTo(-10,24);ctx.moveTo(8,20);ctx.lineTo(10,24);ctx.stroke();ctx.restore()}
+function drawBot(bot){if(bot.defeated)return;ctx.save();ctx.translate(bot.x+bot.w/2,bot.y+bot.h/2);ctx.fillStyle="#f07845";roundedPath(-15,-19,30,38,7);ctx.fill();ctx.strokeStyle="#a84b35";ctx.lineWidth=2;ctx.stroke();ctx.strokeStyle="#a84b35";ctx.beginPath();ctx.moveTo(0,-19);ctx.lineTo(0,-27);ctx.stroke();ctx.fillStyle="#ffca3a";ctx.beginPath();ctx.arc(0,-29,3,0,7);ctx.fill();ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(-6,-5,4,0,7);ctx.arc(6,-5,4,0,7);ctx.fill();ctx.fillStyle="#18324a";ctx.beginPath();ctx.arc(-6,-5,1.5,0,7);ctx.arc(6,-5,1.5,0,7);ctx.fill();ctx.strokeStyle="#18324a";ctx.lineWidth=2;ctx.beginPath();if(bot.vy<0){ctx.moveTo(-10,-13);ctx.lineTo(-3,-16);ctx.moveTo(3,-16);ctx.lineTo(10,-13);ctx.arc(0,3,6,.2,Math.PI-.2)}else{ctx.moveTo(-10,-14);ctx.lineTo(-3,-12);ctx.moveTo(3,-12);ctx.lineTo(10,-14);ctx.arc(0,4,6,Math.PI+.2,Math.PI*2-.2)}ctx.stroke();ctx.restore()}
+function drawEffects(){for(const effect of effects){const alpha=Math.max(0,effect.life/effect.max);ctx.globalAlpha=alpha;if(effect.type==="dust"){ctx.fillStyle="#d9c3a1";ctx.beginPath();ctx.arc(effect.x,effect.y,4+alpha*4,0,7);ctx.fill()}else if(effect.type==="spark"){ctx.strokeStyle="#ffe169";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(effect.x-4,effect.y);ctx.lineTo(effect.x+4,effect.y);ctx.moveTo(effect.x,effect.y-4);ctx.lineTo(effect.x,effect.y+4);ctx.stroke()}else{ctx.fillStyle="#f07845";ctx.font="bold 24px sans-serif";ctx.fillText("×",effect.x-8,effect.y)}ctx.globalAlpha=1}}
 function draw(){
-  ctx.clearRect(0,0,W,H);ctx.fillStyle="#bdeeff";ctx.fillRect(0,0,W,H);
-  ctx.fillStyle="#9bd38c";ctx.beginPath();ctx.moveTo(0,420);for(let x=0;x<=W;x+=100)ctx.quadraticCurveTo(x+50,370+(x%200),x+100,420);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+  const palettes=[["#dff5ff","#b9e7e1","#82c78b"],["#bdeeff","#d9f2d3","#8ecf83"],["#e8e0ff","#c8d6f2","#83a9d6"],["#ffe6cf","#f6d3b2","#b8c77b"]],palette=palettes[levelIndex];ctx.clearRect(0,0,W,H);ctx.fillStyle=palette[0];ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=palette[1];ctx.beginPath();ctx.moveTo(0,390);for(let x=0;x<=W;x+=120)ctx.quadraticCurveTo(x+60,330+(x%180),x+120,390);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();ctx.fillStyle=palette[2];ctx.beginPath();ctx.moveTo(0,430);for(let x=0;x<=W;x+=150)ctx.quadraticCurveTo(x+75,375+(x%150),x+150,430);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
   ctx.fillStyle="#fff9";for(const cloud of [[110,90],[530,110],[770,65]]){ctx.beginPath();ctx.arc(cloud[0],cloud[1],22,0,7);ctx.arc(cloud[0]+25,cloud[1]+5,17,0,7);ctx.arc(cloud[0]-25,cloud[1]+7,15,0,7);ctx.fill()}
-  for(const p of level.platforms){ctx.fillStyle="#6b9f62";ctx.fillRect(...p);ctx.fillStyle="#a4d879";ctx.fillRect(p[0],p[1],p[2],5)}
+  for(const p of level.platforms)drawPlatform(...p);
   for(const spike of level.spikes){ctx.fillStyle="#e84d50";for(let x=spike[0];x<spike[0]+spike[2];x+=14){ctx.beginPath();ctx.moveTo(x,spike[1]+20);ctx.lineTo(x+7,spike[1]);ctx.lineTo(x+14,spike[1]+20);ctx.fill()}}
   if(levelIndex===0&&!progress.tutorial){const x=level.marker[0];ctx.strokeStyle="#ffe169";ctx.lineWidth=4;ctx.strokeRect(x,458,52,22);ctx.fillStyle="#ffe169";ctx.beginPath();ctx.moveTo(x+26,425+Math.sin(performance.now()/220)*6);ctx.lineTo(x+14,440+Math.sin(performance.now()/220)*6);ctx.lineTo(x+38,440+Math.sin(performance.now()/220)*6);ctx.fill()}
-  drawKey(level.key[0],level.key[1]);ctx.fillStyle=player.hasKey?"#51c878":"#718091";ctx.fillRect(level.exit[0],level.exit[1],42,72);ctx.fillStyle="#f7fcff";ctx.fillRect(level.exit[0]+9,level.exit[1]+14,11,11);
-  ctx.fillStyle="#247dcc";ctx.fillRect(player.x,player.y,player.w,player.h);for(const bot of bots){ctx.fillStyle="#f07845";ctx.fillRect(bot.x,bot.y,bot.w,bot.h);ctx.fillStyle="#fff";ctx.fillRect(bot.x+6,bot.y+9,6,6);ctx.fillRect(bot.x+19,bot.y+9,6,6)}
+  drawKey(level.key[0],level.key[1]);ctx.fillStyle=player.hasKey?"#51c878":"#718091";roundedPath(level.exit[0],level.exit[1],42,72,6);ctx.fill();ctx.strokeStyle=player.hasKey?"#287e50":"#536577";ctx.lineWidth=3;ctx.stroke();ctx.fillStyle=player.hasKey?"#fff5ad":"#d9e6ee";ctx.fillRect(level.exit[0]+9,level.exit[1]+14,11,11);ctx.fillStyle="#247dcc";drawPlayer();for(const bot of bots)drawBot(bot);drawEffects();
 }
-function loop(now){const raw=Math.min(.1,(now-last)/1000);last=now;acc+=raw;while(acc>=STEP){update(STEP);acc-=STEP}draw();if(!paused&&!completed)requestAnimationFrame(loop)}
+function loop(now){const raw=Math.min(.1,(now-last)/1000);last=now;acc+=raw;while(acc>=STEP){update(STEP);updateEffects(STEP);acc-=STEP}draw();if(!paused&&!completed)requestAnimationFrame(loop)}
 function toast(message){$("#toast").textContent=message;$("#toast").classList.add("show");setTimeout(()=>$("#toast").classList.remove("show"),1200)}
 async function loadModel(){try{model=await(await fetch("models/gameplay-model.json",{cache:"no-store"})).json()}catch{model={q:{},version:"fallback"}}}
 async function renderTraining(){try{const response=await fetch("models/training-stats.json",{cache:"no-store"});if(response.ok){const stats=await response.json();const rounds=Math.max(1,stats.rounds);$("#rounds").textContent=stats.rounds;$("#catchRate").textContent=Math.round(stats.catches/rounds*100)+"%";$("#deathRate").textContent=Math.round(stats.deaths/rounds*100)+"%";$("#stuckRate").textContent=Math.round(stats.stuck/rounds*100)+"%"}}catch{}try{const active=await(await fetch("models/gameplay-model.json",{cache:"no-store"})).json();$("#modelVersion").textContent=`v${active.version||"unknown"} · ${active.kind||"unknown"}`;$("#modelEvaluation").textContent=active.evaluation?`${Math.round(active.evaluation.catch*100)}% catch on fixed tests`:"not recorded"}catch{$("#modelVersion").textContent="fallback";$("#modelEvaluation").textContent="unavailable"}}
