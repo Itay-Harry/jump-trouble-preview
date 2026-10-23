@@ -24,7 +24,7 @@
     <section id="game" class="hidden">
       <header class="hud">
         <div><strong>JUMP = TROUBLE</strong><span id="levelLabel"></span></div>
-        <div class="hud-right"><span id="keyLabel">🔒 Find the key!</span><button id="pauseButton">Pause</button></div>
+        <div class="hud-right"><span id="keyLabel">🔒 Find the key!</span><span id="starLabel">☆ 0/1</span><button id="pauseButton">Pause</button></div>
       </header>
       <div class="canvas-wrap">
         <canvas id="gameCanvas" width="960" height="540" aria-label="Platform game"></canvas>
@@ -50,6 +50,6 @@
     <div id="pauseModal" class="modal hidden"><div class="modal-card"><h2>Paused</h2><button id="resumeButton" class="primary">Resume</button><button id="restartButton">Restart level</button><button id="pauseMenuButton">Back to menu</button></div></div>
     <div id="completeModal" class="modal hidden"><div class="modal-card"><h2 id="completeTitle">Level complete!</h2><p id="completeText"></p><button id="nextButton" class="primary">Next level</button><button id="replayButton">Replay</button><button id="completeMenuButton">Main menu</button></div></div>
   </main>
-  <script src="game.js?v=4"></script>
+  <script src="game.js?v=5"></script>
 </body>
 </html>
